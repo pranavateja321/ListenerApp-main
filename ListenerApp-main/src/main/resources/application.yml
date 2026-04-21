@@ -1,0 +1,85 @@
+spring:
+  application:
+    name: listener-app
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+  task:
+    scheduling:
+      pool:
+        size: 2   # Prevent a single long DLQ scan from blocking other @Scheduled methods
+
+server:
+  port: 8080
+
+# ──────────────────────────────────────────────────
+# External Transcription API — replace the placeholder below
+# or set the OPENAI_API_KEY environment variable.
+# ──────────────────────────────────────────────────
+transcription:
+  api-key: ${OPENAI_API_KEY:}
+  url: https://api.openai.com/v1/audio/transcriptions
+  model: gpt-4o-transcribe
+
+# ──────────────────────────────────────────────────
+# GitHub — replace each placeholder below
+# or set the corresponding environment variables.
+# ──────────────────────────────────────────────────
+github:
+  token: ${GITHUB_TOKEN:}
+  owner: susheel009
+  repo: Susheel_data
+  branch: develop
+  inbox-path: inbox
+
+# ──────────────────────────────────────────────────
+# Audio compression (requires FFmpeg)
+# ──────────────────────────────────────────────────
+audio:
+  transcription-max-bytes: 25000000    # 25 MB — API hard limit
+  min-bitrate-kbps: 32           # quality floor — below this, audio is too degraded
+  max-bitrate-kbps: 128          # cap — higher is unnecessary for voice
+  ffmpeg-path: ffmpeg            # system PATH or absolute path to binary
+
+# ──────────────────────────────────────────────────
+# Capture concurrency
+# ──────────────────────────────────────────────────
+capture:
+  max-concurrent: 5              # limits simultaneous uploads to prevent disk exhaustion
+
+# ──────────────────────────────────────────────────
+# Retry — applied to Transcription + GitHub API clients
+# ──────────────────────────────────────────────────
+retry:
+  max-attempts: 3
+  initial-delay-ms: 1000
+  multiplier: 2.0
+
+# ──────────────────────────────────────────────────
+# Dead Letter Queue
+#   transcription-unreachable/ — audio stored for later transcription
+#   github-unreachable/  — transcript stored for later commit
+# ──────────────────────────────────────────────────
+dlq:
+  base-path: ./dlq
+  retry-interval-ms: 300000      # 5 minutes
+  max-retry-attempts: 5
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,info
+  endpoint:
+    health:
+      show-details: when-authorized   # Don't expose internals on public port
+
+# ──────────────────────────────────────────────────
+# OpenAPI / Swagger UI
+# ──────────────────────────────────────────────────
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
